@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "无人机避障系统数据流",
+    "locale": "zh-CN",
+    "output": "docs/UAV_DATAFLOW.html",
+    "viewBox": [
+      1080,
+      900
+    ],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "localization-loop",
+        "label": "定位闭环",
+        "focus": [
+          "livox",
+          "fast_lio",
+          "vision_relay",
+          "mavros"
+        ],
+        "note": "SLAM 位姿如何进入 PX4 EKF2，让飞控知道自己在哪里。"
+      },
+      {
+        "id": "control-loop",
+        "label": "控制闭环",
+        "focus": [
+          "fast_lio",
+          "slam_relay",
+          "ego_planner",
+          "traj_server",
+          "cmd_bridge",
+          "mavros"
+        ],
+        "note": "占据栅格避障规划的指令如何变成 PX4 的 Offboard setpoint。"
+      },
+      {
+        "id": "tag-landing",
+        "label": "AprilTag 降落",
+        "focus": [
+          "usb_cam",
+          "apriltag",
+          "tag_relay",
+          "tag_mission",
+          "mavros"
+        ],
+        "note": "下视相机检测标签，转成世界系位姿后由 PID 引导精准降落。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "传感器输入"
+    },
+    {
+      "label": "SLAM / 感知"
+    },
+    {
+      "label": "scouting_bridge 桥接"
+    },
+    {
+      "label": "ego-planner 规划"
+    },
+    {
+      "label": "PX4 执行"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "usb_cam",
+      "type": "external",
+      "label": "USB 下视相机",
+      "sublabel": "usb_cam MJPEG",
+      "stage": 0,
+      "row": 4,
+      "tag": "30 fps MJPEG"
+    },
+    {
+      "id": "livox",
+      "type": "external",
+      "label": "Livox Mid-360",
+      "sublabel": "livox_ros_driver2",
+      "stage": 0,
+      "row": 1,
+      "tag": "10 Hz CustomMsg"
+    },
+    {
+      "id": "apriltag",
+      "type": "backend",
+      "label": "apriltag_ros",
+      "sublabel": "36h11 + solvePnP",
+      "stage": 1,
+      "row": 4,
+      "tag": "相机 → tag TF"
+    },
+    {
+      "id": "fast_lio",
+      "type": "backend",
+      "label": "FAST_LIO_ROS2",
+      "sublabel": "LIO 里程计 + 点云",
+      "stage": 1,
+      "row": 1,
+      "tag": "camera_init → body"
+    },
+    {
+      "id": "tag_relay",
+      "type": "backend",
+      "label": "tag_pose_relay",
+      "sublabel": "多标签质心 → 世界系",
+      "stage": 2,
+      "row": 4,
+      "tag": "10 Hz"
+    },
+    {
+      "id": "vision_relay",
+      "type": "backend",
+      "label": "vision_pose_relay",
+      "sublabel": "/Odometry → EKF2",
+      "stage": 2,
+      "row": 0,
+      "tag": "10 Hz"
+    },
+    {
+      "id": "slam_relay",
+      "type": "backend",
+      "label": "slam_odom_relay",
+      "sublabel": "只改 frame_id",
+      "stage": 2,
+      "row": 2,
+      "tag": "10 Hz"
+    },
+    {
+      "id": "ego_planner",
+      "type": "backend",
+      "label": "ego_planner_node",
+      "sublabel": "FSM + 占据栅格",
+      "stage": 3,
+      "row": 1,
+      "tag": "USE_LIDAR_CLOUD"
+    },
+    {
+      "id": "traj_server",
+      "type": "backend",
+      "label": "traj_server",
+      "sublabel": "B 样条 → PositionCommand",
+      "stage": 3,
+      "row": 3,
+      "tag": "100 Hz"
+    },
+    {
+      "id": "tag_mission",
+      "type": "backend",
+      "label": "tag_mission_controller",
+      "sublabel": "扫描 + PID 精准降落",
+      "stage": 4,
+      "row": 4,
+      "width": 172,
+      "tag": "10 / 20 Hz"
+    },
+    {
+      "id": "mavros",
+      "type": "external",
+      "label": "MAVROS / PX4",
+      "sublabel": "Offboard + EKF2",
+      "stage": 4,
+      "row": 0,
+      "tag": "飞控"
+    },
+    {
+      "id": "cmd_bridge",
+      "type": "backend",
+      "label": "cmd_bridge",
+      "sublabel": "PositionCommand 桥",
+      "stage": 4,
+      "row": 2,
+      "width": 132,
+      "tag": "ENU 输入"
+    }
+  ],
+  "flows": [
+    {
+      "from": "usb_cam",
+      "to": "apriltag",
+      "label": "/image_raw/compressed",
+      "classification": "MJPEG 直通",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": 53
+    },
+    {
+      "from": "livox",
+      "to": "fast_lio",
+      "label": "/livox/lidar + /imu",
+      "classification": "CustomMsg · Imu",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "apriltag",
+      "to": "tag_relay",
+      "label": "TF camera_down → tag",
+      "classification": "solvePnP 每帧",
+      "variant": "default",
+      "route": "straight",
+      "labelDy": 53
+    },
+    {
+      "from": "fast_lio",
+      "to": "vision_relay",
+      "label": "/Odometry",
+      "classification": "camera_init → body",
+      "variant": "emphasis",
+      "labelAt": [
+        505,
+        208
+      ]
+    },
+    {
+      "from": "fast_lio",
+      "to": "slam_relay",
+      "label": "/Odometry",
+      "classification": "10 Hz",
+      "variant": "default",
+      "labelAt": [
+        505,
+        337
+      ]
+    },
+    {
+      "from": "fast_lio",
+      "to": "ego_planner",
+      "label": "/cloud_registered_body",
+      "classification": "机体系点云",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelAt": [
+        636,
+        208
+      ]
+    },
+    {
+      "from": "tag_relay",
+      "to": "tag_mission",
+      "label": "/tag_detection/pose + /id",
+      "classification": "10 Hz",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "vision_relay",
+      "to": "mavros",
+      "label": "/mavros/vision_pose/pose",
+      "classification": "EKF2 外部视觉",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "slam_relay",
+      "to": "ego_planner",
+      "label": "/odom_world",
+      "classification": "world 系里程计",
+      "variant": "emphasis"
+    },
+    {
+      "from": "ego_planner",
+      "to": "traj_server",
+      "label": "planning/bspline",
+      "classification": "重规划",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "from": "traj_server",
+      "to": "cmd_bridge",
+      "label": "/position_cmd",
+      "classification": "100 Hz",
+      "variant": "emphasis"
+    },
+    {
+      "from": "cmd_bridge",
+      "to": "mavros",
+      "label": "/mavros/setpoint_raw/local",
+      "classification": "pos + vel + acc + yaw",
+      "variant": "emphasis",
+      "labelDy": 82
+    },
+    {
+      "from": "tag_mission",
+      "to": "mavros",
+      "label": "setpoint_raw + AUTO.LAND",
+      "classification": "PID 降落",
+      "variant": "default",
+      "route": "auto",
+      "fromSide": "right",
+      "toSide": "right",
+      "via": [
+        [
+          1100,
+          613
+        ],
+        [
+          1100,
+          157
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "定位闭环 camera_init",
+      "items": [
+        "FAST_LIO 的 /Odometry 经 vision_pose_relay 进入 PX4 EKF2",
+        "camera_init = world = odom 原点重合，代码不做对齐校正",
+        "PX4 侧 EKF2_EV_CTRL 需在地面站手动开启"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "控制闭环 world",
+      "items": [
+        "slam_odom_relay 只改 frame_id，数值原样透传",
+        "ego-planner 直接读 Odometry 位姿，不依赖 TF",
+        "cmd_bridge 全程 ENU，MAVROS 内部完成 ENU → NED"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "任务编排与交接",
+      "items": [
+        "mission_controller 负责 OFFBOARD、ARM、起飞与 /traj_start_trigger",
+        "航点飞完发 /mission/stage = complete，停 cmd_bridge 并交给 tag_mission_controller",
+        "tf_broadcaster 维护 body / base_link / camera_down 静态外参"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "风险点",
+      "items": [
+        "规划系 camera_init ≠ 控制系 PX4：靠未校验的 Δ≈0 假设",
+        "base_link 的父只能有一个：确认 MAVROS 侧 tf.send=false",
+        "mission_controller 的 mission/* launch 参数实际是死参数",
+        "/mission/stage 一词三义：停 cmd_bridge、启降落、报阶段，且被两节点双发布"
+      ]
+    }
+  ]
+}

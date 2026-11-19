@@ -1,0 +1,39 @@
+# AprilTag detection parameters for apriltag_ros.
+# Used by: apriltag_node (christianrauch/apriltag_ros)
+
+apriltag_detector:
+  ros__parameters:
+    # Image transport: "raw" or "compressed"
+    # compressed: usb_cam publishes MJPEG directly (pixel_format: "mjpeg"),
+    # avoiding DDS drop of multi-MB raw frames (2026-08-14 flight: 0 frames received)
+    image_transport: compressed
+
+    # Tag family: 16h5, 25h9, 36h11, Circle21h7, Circle49h12,
+    #             Custom48h12, Standard41h12, Standard52h13
+    family: 36h11
+
+    # Tag edge size in meters (adjust to match your printed tag)
+    size: 0.165
+
+    # Maximum allowed hamming distance (corrected bit errors, 0 = strict)
+    max_hamming: 0
+
+    # Pose estimation: "pnp" (more accurate, OpenCV solvePnP),
+    #                  "homography" (faster),
+    #                  "" (disabled — detection metadata only)
+    pose_estimation_method: pnp
+
+    # Print profiling information to stdout
+    profile: false
+
+    # QoS profile: "default", "sensor_data", or "system_default"
+    qos_profile: sensor_data
+
+    # Detector tuning
+    detector:
+      threads: 2           # CPU threads for detection
+      decimate: 1.0        # Resolution decimation (1.0 = full res, higher = faster but lower range)
+      blur: 0.0            # Gaussian blur sigma before detection
+      refine: true            # Snap to strong gradients (1 = enabled)
+      sharpening: 0.25     # Image sharpening before decoding
+      debug: false             # Write debug images to CWD (0 = off)

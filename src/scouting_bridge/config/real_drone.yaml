@@ -1,0 +1,65 @@
+# Real drone parameters for scouting_bridge nodes.
+# Override via: ros2 launch scouting_bridge real_drone.launch.py
+#   or via --ros-args -p param:=value
+
+# --- TF broadcaster parameters ---
+tf_broadcaster:
+  ros__parameters:
+    # Frame names
+    body_frame: "body"
+    base_link_frame: "base_link"
+    mid360_frame: "livox_frame"
+    camera_down_frame: "camera_down"
+
+    # body -> base_link (IMU center -> drone center, identity by default)
+    body_x: 0.0
+    body_y: 0.0
+    body_z: 0.0
+    body_roll: 0.0
+    body_pitch: 0.0
+    body_yaw: 0.0
+
+    # base_link -> mid360 (LiDAR mounting position)
+    mid360_x: 0.0
+    mid360_y: 0.0
+    mid360_z: 0.1
+    mid360_roll: 0.0
+    mid360_pitch: 0.0
+    mid360_yaw: 0.0
+
+    # base_link -> camera_down (downward USB camera)
+    camera_down_x: 0.0
+    camera_down_y: 0.0
+    camera_down_z: -0.15
+    camera_down_roll: 0.0
+    camera_down_pitch: 1.57
+    camera_down_yaw: 0.0
+
+# NOTE: no odom -> base_link TF is published here. base_link's parent is body
+# (see tf_broadcaster.py); the PX4 estimate stays a topic only.
+
+# --- Vision pose relay ---
+vision_pose_relay:
+  ros__parameters:
+    odom_topic: "/Odometry"
+
+
+# --- SLAM odom relay ---
+slam_odom_relay:
+  ros__parameters:
+    odom_topic_in: "/Odometry"
+    odom_topic_out: "/odom_world"
+
+# --- Tag pose relay ---
+tag_pose_relay:
+  ros__parameters:
+    world_frame: "camera_init"
+    body_frame: "body"
+    camera_frame: "camera_down"
+    tag_family: "36h11"
+    odom_topic: "/Odometry"
+    publish_rate: 10.0
+    lost_threshold: 3
+    # Odom stamp lags wall clock ~1s (livox clock offset); must exceed that
+    # or tag poses are never published. Tune up (e.g. 5.0) if PID lags.
+    odom_max_age: 3.0

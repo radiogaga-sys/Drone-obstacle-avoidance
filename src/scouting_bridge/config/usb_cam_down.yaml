@@ -1,0 +1,27 @@
+# USB downward-facing camera driver parameters.
+# Used by: usb_cam_node_exe (ros-humble-usb-cam)
+
+/**:
+  ros__parameters:
+    video_device: "/dev/video0"
+    framerate: 30.0
+    io_method: "mmap"
+    frame_id: "camera_down"
+    # "mjpeg": publish hardware-MJPEG frames directly as /image_raw/compressed
+    # (was "mjpeg2rgb": decoded 1280x720 rgb8 ~2.8MB/frame, dropped by DDS on NUC)
+    pixel_format: "raw_mjpeg"  
+    image_width: 1280
+    image_height: 720
+    camera_name: "camera_down"
+    camera_info_url: "package://scouting_bridge/config/camera_down.yaml"
+    brightness: -1
+    contrast: -1
+    saturation: -1
+    sharpness: -1
+    gain: -1
+    auto_white_balance: true
+    white_balance: 4000
+    autoexposure: true
+    exposure: 100
+    autofocus: false
+    focus: -1
